@@ -1,12 +1,36 @@
 import { auto } from "@popperjs/core";
-import { query, update, text, Record, StableBTreeMap, Variant, Vec, None, Some, Ok, Err, ic, Principal, Opt, nat64, Duration, Result, bool, Canister } from "azle";
 import {
-    Ledger, binaryAddressFromAddress, binaryAddressFromPrincipal, hexAddressFromPrincipal
+    query,
+    update,
+    text,
+    Record,
+    StableBTreeMap,
+    Variant,
+    Vec,
+    None,
+    Some,
+    Ok,
+    Err,
+    ic,
+    Principal,
+    Opt,
+    nat64,
+    Duration,
+    Result,
+    bool,
+    Canister
+} from "azle";
+
+import {
+    Ledger,
+    binaryAddressFromPrincipal,
+    hexAddressFromPrincipal
 } from "azle/canisters/ledger";
+
 import { hashCode } from "hashcode";
 import { v4 as uuidv4 } from "uuid";
 
-
+// Define record types
 const Campaign = Record({
     id: text,
     title: text,
@@ -45,23 +69,10 @@ const DonorPayload = Record({
     email: text
 });
 
-
+// Define variant types
 const ReserveStatus = Variant({
     PaymentPending: text,
     Completed: text
-});
-
-
-
-// Stay with implementing Payment for Reserving 
-const Reserve = Record({
-    donorId: text,
-    price: nat64,
-    status: ReserveStatus,
-    donator: Principal,
-    reciever: Principal,
-    paid_at_block: Opt(nat64),
-    memo: nat64
 });
 
 const Message = Variant({
@@ -71,7 +82,7 @@ const Message = Variant({
     PaymentCompleted: text
 });
 
-
+// Define storage maps
 const campaignStorage = StableBTreeMap(0, text, Campaign);
 const donationStorage = StableBTreeMap(1, text, Donation);
 const donorStorage = StableBTreeMap(2, text, Donor);
@@ -80,89 +91,74 @@ const pendingReserves = StableBTreeMap(4, nat64, Reserve);
 
 const TIMEOUT_PERIOD = 48000n; // reservation period in seconds
 
-
-/* 
-    initialization of the Ledger canister. The principal text value is hardcoded because 
-    we set it in the `dfx.json`
-*/
+// Initialize Ledger canister
 const icpCanister = Ledger(Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai"));
 
 export default Canister({
 
+    // Define query functions
+
     // Get all the campaigns
-    getCampaigns: query([], Vec(Campaign), () => {
-        return campaignStorage.values();
-    }),
+    getCampaigns: query([], Vec(Campaign), () => campaignStorage.values()),
 
     // Get all the donations
-    getDonations: query([], Vec(Donation), () => {
-        return donationStorage.values();
-    }),
+    getDonations: query([], Vec(Donation), () => donationStorage.values()),
 
     // Get all the donors
-    getDonors: query([], Vec(Donor), () => {
-        return donorStorage.values();
-    }),
+    getDonors: query([], Vec(Donor), () => donorStorage.values()),
 
     // Get a campaign by id
     getCampaign: query([text], Result(Campaign, Message), (id) => {
         const campaignOpt = campaignStorage.get(id);
-        if ("None" in campaignOpt) {
-            return Err({ NotFound: `campaign with id=${id} not found` });
-        }
-        return Ok(campaignOpt.Some);
+        return campaignOpt ? Ok(campaignOpt) : Err({ NotFound: `Campaign with id=${id} not found` });
     }),
 
     // Get a donation by id
     getDonation: query([text], Result(Donation, Message), (id) => {
         const donationOpt = donationStorage.get(id);
-        if ("None" in donationOpt) {
-            return Err({ NotFound: `donation with id=${id} not found` });
-        }
-        return Ok(donationOpt.Some);
+        return donationOpt ? Ok(donationOpt) : Err({ NotFound: `Donation with id=${id} not found` });
     }),
 
     // Get a donor by id
     getDonor: query([text], Result(Donor, Message), (id) => {
         const donorOpt = donorStorage.get(id);
-        if ("None" in donorOpt) {
-            return Err({ NotFound: `donor with id=${id} not found` });
-        }
-        return Ok(donorOpt.Some);
+        return donorOpt ? Ok(donorOpt) : Err({ NotFound: `Donor with id=${id} not found` });
     }),
+
+    // Define update functions
 
     // Create a campaign
     createCampaign: update([CampaignPayload], Result(Campaign, Message), (payload) => {
-        if (typeof payload !== "object" || Object.keys(payload).length === 0) {
-            return Err({ InvalidPayload: "invalid payoad" });
+        if (!payload || Object.keys(payload).length === 0) {
+            return Err({ InvalidPayload: "Invalid payload" });
         }
-        const campaign = { id: uuidv4(), creator: ic.caller(),raised: 0n, ...payload };
+        const campaign = { id: uuidv4(), creator: ic.caller(), raised: 0n, ...payload };
         campaignStorage.insert(campaign.id, campaign);
         return Ok(campaign);
     }),
 
     // Create a donation
     createDonation: update([text, DonationPayload], Result(Donation, Message), (campaignId, payload) => {
-        if (typeof payload !== "object" || Object.keys(payload).length === 0) {
-            return Err({ InvalidPayload: "invalid payoad" });
+        if (!payload || Object.keys(payload).length === 0) {
+            return Err({ InvalidPayload: "Invalid payload" });
         }
         const campaignOpt = campaignStorage.get(campaignId);
-        if ("None" in campaignOpt) {
-            return Err({ NotFound: `cannot donate: campaign with id=${campaignId} not found` });
+        if (!campaignOpt) {
+            return Err({ NotFound: `Campaign with id=${campaignId} not found` });
         }
-        const donation = { id: uuidv4(), campaign: campaignOpt.Some, donor: [], ...payload };
+        const donation = { id: uuidv4(), campaign: campaignOpt, donor: [], ...payload };
         donationStorage.insert(donation.id, donation);
-        const updatedCampaign = { ...campaignOpt.Some, raised: campaignOpt.Some.raised + donation.amount };
+        const updatedCampaign = { ...campaignOpt, raised: campaignOpt.raised + donation.amount };
         campaignStorage.insert(campaignId, updatedCampaign);
         return Ok(donation);
     }),
 
     // Create a donor
     createDonor: update([DonorPayload], Result(Donor, Message), (payload) => {
-        if (typeof payload !== "object" || Object.keys(payload).length === 0) {
-            return Err({ InvalidPayload: "invalid payoad" });
+        if (!payload || Object.keys(payload).length === 0) {
+            return Err({ InvalidPayload: "Invalid payload" });
         }
-        const donor = { id: uuidv4(), ...payload, donationAmount: 0n};
+        const donor = { id: uuidv4(), ...payload, donationAmount: 0n };
         donorStorage.insert(donor.id, donor);
         return Ok(donor);
     }),
