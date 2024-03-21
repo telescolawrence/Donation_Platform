@@ -10,8 +10,13 @@ export async function createDonor(donor) {
 }
 
 // create a donation
-export async function createDonation(donation) {
-  return window.canister.donation.createDonation(donation);
+export async function createDonation(id,donation) {
+  return window.canister.donation.createDonation(id,donation);
+}
+
+// aaddDonorToCampaign
+export async function addDonorToCampaign(campaignId, donorId) {
+  return window.canister.donation.addDonorToCampaign(campaignId, donorId);
 }
 
 // get all donations
@@ -123,6 +128,11 @@ export async function deleteDonation(id) {
   return window.canister.donation.deleteDonation(id);
 }
 
+// addDonationToCampaign
+export async function addDonationToCampaign(campaignId, donationId) {
+  return window.canister.donation.addDonationToCampaign(campaignId, donationId);
+}
+
 
 
 
@@ -132,5 +142,5 @@ export async function makeDonation(donor, amount, campaignId) {
   const recieverPrincipal = Principal.from(donationResponse.Ok.reciever);
   const recieverAddress = await donationCanister.getAddressFromPrincipal(recieverPrincipal);
   const block = await transferICP(recieverAddress, donationResponse.Ok.price, donationResponse.Ok.memo);
-  await donationCanister.completePurchase(recieverPrincipal, donor.id, donationResponse.Ok.price, block, donationResponse.Ok.memo);
+  await donationCanister.completeReserveDonation(recieverPrincipal, donor.id, donationResponse.Ok.price, block, donationResponse.Ok.memo);
 }

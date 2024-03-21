@@ -13,18 +13,19 @@ const Campaign = Record({
     description: text,
     goal: nat64,
     raised: nat64,
+    donor: Vec(text),
     creator: Principal,
 });
 
 const Donation = Record({
     id: text,
     amount: nat64,
-    donor: Vec(text),
     campaign: Campaign,
 });
 
 const Donor = Record({
     id: text,
+    owner: Principal,
     name: text,
     email: text,
     donationAmount: nat64,
@@ -136,7 +137,7 @@ export default Canister({
         if (typeof payload !== "object" || Object.keys(payload).length === 0) {
             return Err({ InvalidPayload: "invalid payoad" });
         }
-        const campaign = { id: uuidv4(), creator: ic.caller(),raised: 0n, ...payload };
+        const campaign = { id: uuidv4(), creator: ic.caller(),raised: 0n,donor: [], ...payload };
         campaignStorage.insert(campaign.id, campaign);
         return Ok(campaign);
     }),
@@ -150,7 +151,7 @@ export default Canister({
         if ("None" in campaignOpt) {
             return Err({ NotFound: `cannot donate: campaign with id=${campaignId} not found` });
         }
-        const donation = { id: uuidv4(), campaign: campaignOpt.Some, donor: [], ...payload };
+        const donation = { id: uuidv4(), campaign: campaignOpt.Some,  ...payload };
         donationStorage.insert(donation.id, donation);
         const updatedCampaign = { ...campaignOpt.Some, raised: campaignOpt.Some.raised + donation.amount };
         campaignStorage.insert(campaignId, updatedCampaign);
@@ -162,10 +163,11 @@ export default Canister({
         if (typeof payload !== "object" || Object.keys(payload).length === 0) {
             return Err({ InvalidPayload: "invalid payoad" });
         }
-        const donor = { id: uuidv4(), ...payload, donationAmount: 0n};
+        const donor = { id: uuidv4(), owner: ic.caller() , ...payload, donationAmount: 0n};
         donorStorage.insert(donor.id, donor);
         return Ok(donor);
     }),
+
 
     // Update a campaign
     updateCampaign: update([Campaign], Result(Campaign, Message), (payload) => {
@@ -245,15 +247,17 @@ export default Canister({
         const campaign = campaignOpt.Some;
 
         const campaignPrincipal = campaign.creator;
+        const donorPrincipal = donor.owner;
         const reserve = {
             donorId: donor.id,
             price: amount,
             status: { PaymentPending: "PAYMENT_PENDING" },
-            donator: ic.caller(),
+            donator: donorPrincipal,
             reciever: campaignPrincipal,
             paid_at_block: None,
             memo: generateCorrelationId(donorId)
         };
+        console.log("reserve",reserve)
 
         pendingReserves.insert(reserve.memo, reserve);
         discardByTimeout(reserve.memo, TIMEOUT_PERIOD);
@@ -285,6 +289,18 @@ export default Canister({
         return Ok(updatedReserve);
     }
     ),
+
+    // Add donor.name to campaign.donor
+    addDonorToCampaign: update([text, text], Result(Campaign, Message), (campaignId, donorId) => {
+        const campaignOpt = campaignStorage.get(campaignId);
+        if ("None" in campaignOpt) {
+            return Err({ NotFound: `cannot add donor to the campaign: campaign with id=${campaignId} not found` });
+        }
+        const campaign = campaignOpt.Some;
+        campaign.donor.push(donorId);
+        campaignStorage.insert(campaign.id, campaign);
+        return Ok(campaign);
+    } ),
 
     
      /*
