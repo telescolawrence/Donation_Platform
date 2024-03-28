@@ -6,12 +6,12 @@ import { toast } from "react-toastify";
 
 
 import { NotificationError, NotificationSuccess } from "../utils/Notifications";
-import { createDonation, getDonationById } from "../../utils/marketplace";
+import { changeStatus, createDonation, getDonationById } from "../../utils/marketplace";
 
 const Campaign = ({campaign}) => {
-    const { id, title, description, goal, raised,donor, creator } = campaign;
+    const { id, title, description, goal, raised,donor, status, creator } = campaign;
     const [donation, setDonation] = useState({});
-  console.log("donation Amount", donation)
+  // console.log("donation Amount", donation)
 
 
       const addDonation = async (donation) => {
@@ -27,6 +27,22 @@ const Campaign = ({campaign}) => {
           toast(<NotificationError text="Failed to create a donation." />);
         }
       };
+
+      // check for donation status update
+      const performCampaignCheck = async () => {
+          try {
+            await changeStatus(id);
+            toast(<NotificationSuccess text="Campaign status updated successfully." />);
+          } catch (error) {
+            toast(<NotificationSuccess text="Maintained its campaign status." />);
+          }
+      }
+
+      useEffect(() => {
+        performCampaignCheck();
+      } , [raised]);
+
+   
 
 
   return (
@@ -63,8 +79,17 @@ const Campaign = ({campaign}) => {
             <Card.Text className="text-secondary">
             <span>{donation.amount ? donation.amount.toString() : "Set donation amount"}</span>
             </Card.Text>
-
-            <CreateDonation save={addDonation} />
+            { status !== "COMPLETED" ?
+              <CreateDonation save={addDonation} /> :
+              <Button
+                variant="dark"
+                disabled
+                style={{marginRight: "10px"}}
+              >
+                  Update Donation Record
+              </Button>
+            
+          }
         </Card.Body>
       </Card>
     </Col>

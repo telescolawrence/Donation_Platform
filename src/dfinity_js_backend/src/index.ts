@@ -13,6 +13,7 @@ const Campaign = Record({
     description: text,
     goal: nat64,
     raised: nat64,
+    status: text,
     donor: Vec(text),
     creator: Principal,
 });
@@ -137,8 +138,22 @@ export default Canister({
         if (typeof payload !== "object" || Object.keys(payload).length === 0) {
             return Err({ InvalidPayload: "invalid payoad" });
         }
-        const campaign = { id: uuidv4(), creator: ic.caller(),raised: 0n,donor: [], ...payload };
+        const campaign = { id: uuidv4(), creator: ic.caller(),raised: 0n,donor: [], ...payload, status: "ACTIVE"};
         campaignStorage.insert(campaign.id, campaign);
+        return Ok(campaign);
+    }),
+
+    // change the status of a campaign if goal is equal to raised
+    changeStatus: update([text], Result(Campaign, Message), (id) => {
+        const campaignOpt = campaignStorage.get(id);
+        if ("None" in campaignOpt) {
+            return Err({ NotFound: `cannot change the status: campaign with id=${id} not found` });
+        }
+        const campaign = campaignOpt.Some;
+        if (campaign.goal <= campaign.raised) {
+            campaign.status = "COMPLETED";
+            campaignStorage.insert(campaign.id, campaign);
+        }
         return Ok(campaign);
     }),
 

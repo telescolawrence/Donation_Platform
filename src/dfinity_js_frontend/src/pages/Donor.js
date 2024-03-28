@@ -48,8 +48,7 @@ const Donor = () => {
       });
       addDonorToCampaign(campaignId, id);
     } catch (error) {
-      console.log("donate err", error)
-      toast(<NotificationError text="Failed to Donate." />);
+      toast(<NotificationError text="Failed: Create Profile and also have ICP in wallet" />);
     } finally {
       setLoading(false);
     }
@@ -78,6 +77,7 @@ const Donor = () => {
       toast(<NotificationError text="Failed to create a donor. Create Donor Profile to Donate" />);
     }
   };
+
 
 
   useEffect(() => {
@@ -124,6 +124,7 @@ const Donor = () => {
                 <th>Campaign Name</th>
                 <th>Campaign Description</th>
                 <th>Campaign Goal</th>
+                <th>Status</th>
                 <th>Donate</th>
                 </tr>
             </thead>
@@ -134,8 +135,13 @@ const Donor = () => {
                         <td>{campaign.title}</td>
                         <td>{campaign.description}</td>
                         <td>{campaign.goal.toString()}</td>
+                        <td>{campaign.status}</td>
                         <td>
-                            <MakeDonation donate={donate} campaignId={campaign.id} />
+                          {campaign.status !== "COMPLETED" ? (
+                                <MakeDonation donate={donate} campaignId={campaign.id} />
+                            ) : (
+                                <button disabled>Make Donation</button>
+                            )}
                         </td>
                     </tr>
                 ))}

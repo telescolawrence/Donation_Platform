@@ -133,6 +133,10 @@ export async function addDonationToCampaign(campaignId, donationId) {
   return window.canister.donation.addDonationToCampaign(campaignId, donationId);
 }
 
+// changeStatus
+export async function changeStatus(id) {
+  return window.canister.donation.changeStatus(id);
+}
 
 
 
