@@ -9,28 +9,13 @@ export async function createDonor(donor) {
   return window.canister.donation.createDonor(donor);
 }
 
-// create a donation
-export async function createDonation(id,donation) {
-  return window.canister.donation.createDonation(id,donation);
-}
+
 
 // aaddDonorToCampaign
 export async function addDonorToCampaign(campaignId, donorId) {
   return window.canister.donation.addDonorToCampaign(campaignId, donorId);
 }
 
-// get all donations
-export async function getDonations() {
-  try {
-    return await window.canister.donation.getDonations();
-  } catch (err) {
-    if (err.name === "AgentHTTPResponseError") {
-      const authClient = window.auth.client;
-      await authClient.logout();
-    }
-    return [];
-  }
-}
 
 //get all campaigns
 export async function getCampaigns() {
@@ -84,18 +69,6 @@ export async function getDonorById(id) {
   }
 }
 
-//get donation by id
-export async function getDonationById(id) {
-  try {
-    return await window.canister.donation.getDonation(id);
-  } catch (err) {
-    if (err.name === "AgentHTTPResponseError") {
-      const authClient = window.auth.client;
-      await authClient.logout();
-    }
-    return [];
-  }
-}
 
 //update campaign
 export async function updateCampaign(campaign) {
@@ -107,11 +80,7 @@ export async function updateDonor(donor) {
   return window.canister.donation.updateDonor(donor);
 }
 
-//update donation
 
-export async function updateDonation(donation) {
-  return window.canister.donation.updateDonation(donation);
-}
 
 //delete campaign
 export async function deleteCampaign(id) {
@@ -123,15 +92,7 @@ export async function deleteDonor(id) {
   return window.canister.donation.deleteDonor(id);
 }
 
-//delete donation
-export async function deleteDonation(id) {
-  return window.canister.donation.deleteDonation(id);
-}
 
-// addDonationToCampaign
-export async function addDonationToCampaign(campaignId, donationId) {
-  return window.canister.donation.addDonationToCampaign(campaignId, donationId);
-}
 
 // changeStatus
 export async function changeStatus(id) {
@@ -147,4 +108,5 @@ export async function makeDonation(donor, amount, campaignId) {
   const recieverAddress = await donationCanister.getAddressFromPrincipal(recieverPrincipal);
   const block = await transferICP(recieverAddress, donationResponse.Ok.price, donationResponse.Ok.memo);
   await donationCanister.completeReserveDonation(recieverPrincipal, donor.id, donationResponse.Ok.price, block, donationResponse.Ok.memo);
+  await donationCanister.changeRaised(campaignId, amount);
 }

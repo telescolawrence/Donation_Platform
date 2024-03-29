@@ -18,11 +18,7 @@ const Campaign = Record({
     creator: Principal,
 });
 
-const Donation = Record({
-    id: text,
-    amount: nat64,
-    campaign: Campaign,
-});
+
 
 const Donor = Record({
     id: text,
@@ -38,9 +34,7 @@ const CampaignPayload = Record({
     goal: nat64,
 });
 
-const DonationPayload = Record({
-    amount: nat64,
-});
+
 
 const DonorPayload = Record({
     name: text,
@@ -75,7 +69,6 @@ const Message = Variant({
 
 
 const campaignStorage = StableBTreeMap(0, text, Campaign);
-const donationStorage = StableBTreeMap(1, text, Donation);
 const donorStorage = StableBTreeMap(2, text, Donor);
 const persistedReserves = StableBTreeMap(3, Principal, Reserve);
 const pendingReserves = StableBTreeMap(4, nat64, Reserve);
@@ -96,10 +89,7 @@ export default Canister({
         return campaignStorage.values();
     }),
 
-    // Get all the donations
-    getDonations: query([], Vec(Donation), () => {
-        return donationStorage.values();
-    }),
+
 
     // Get all the donors
     getDonors: query([], Vec(Donor), () => {
@@ -115,14 +105,7 @@ export default Canister({
         return Ok(campaignOpt.Some);
     }),
 
-    // Get a donation by id
-    getDonation: query([text], Result(Donation, Message), (id) => {
-        const donationOpt = donationStorage.get(id);
-        if ("None" in donationOpt) {
-            return Err({ NotFound: `donation with id=${id} not found` });
-        }
-        return Ok(donationOpt.Some);
-    }),
+
 
     // Get a donor by id
     getDonor: query([text], Result(Donor, Message), (id) => {
@@ -150,28 +133,16 @@ export default Canister({
             return Err({ NotFound: `cannot change the status: campaign with id=${id} not found` });
         }
         const campaign = campaignOpt.Some;
-        if (campaign.goal <= campaign.raised) {
+
+        const raisedDivided = campaign.raised / BigInt(10 ** 8);
+        if (campaign.goal <= raisedDivided) {
             campaign.status = "COMPLETED";
             campaignStorage.insert(campaign.id, campaign);
         }
         return Ok(campaign);
     }),
 
-    // Create a donation
-    createDonation: update([text, DonationPayload], Result(Donation, Message), (campaignId, payload) => {
-        if (typeof payload !== "object" || Object.keys(payload).length === 0) {
-            return Err({ InvalidPayload: "invalid payoad" });
-        }
-        const campaignOpt = campaignStorage.get(campaignId);
-        if ("None" in campaignOpt) {
-            return Err({ NotFound: `cannot donate: campaign with id=${campaignId} not found` });
-        }
-        const donation = { id: uuidv4(), campaign: campaignOpt.Some,  ...payload };
-        donationStorage.insert(donation.id, donation);
-        const updatedCampaign = { ...campaignOpt.Some, raised: campaignOpt.Some.raised + donation.amount };
-        campaignStorage.insert(campaignId, updatedCampaign);
-        return Ok(donation);
-    }),
+
 
     // Create a donor
     createDonor: update([DonorPayload], Result(Donor, Message), (payload) => {
@@ -194,15 +165,7 @@ export default Canister({
         return Ok(payload);
     }),
 
-    // Update a donation
-    updateDonation: update([Donation], Result(Donation, Message), (payload) => {
-        const donationOpt = donationStorage.get(payload.id);
-        if ("None" in donationOpt) {
-            return Err({ NotFound: `cannot update the donation: donation with id=${payload.id} not found` });
-        }
-        donationStorage.insert(donationOpt.Some.id, payload);
-        return Ok(payload);
-    }),
+ 
 
     // Update a donor
     updateDonor: update([Donor], Result(Donor, Message), (payload) => {
@@ -225,15 +188,7 @@ export default Canister({
     }),
 
 
-    // Delete a donation by id
-    deleteDonation: update([text], Result(Donation, Message), (id) => {
-        const deletedDonationOpt = donationStorage.get(id);
-        if ("None" in deletedDonationOpt) {
-            return Err({ NotFound: `cannot delete the donation: donation with id=${id} not found` });
-        }
-        donationStorage.remove(id);
-        return Ok(deletedDonationOpt.Some);
-    }),
+
 
     // Delete a donor by id
     deleteDonor: update([text], Result(Donor, Message), (id) => {
@@ -243,6 +198,18 @@ export default Canister({
         }
         donorStorage.remove(id);
         return Ok(deletedDonorOpt.Some);
+    }),
+
+    // change raised amount of a campaign by id 
+    changeRaised: update([text, nat64], Result(Campaign, Message), (id, amount) => {
+        const campaignOpt = campaignStorage.get(id);
+        if ("None" in campaignOpt) {
+            return Err({ NotFound: `cannot change the raised amount: campaign with id=${id} not found` });
+        }
+        const campaign = campaignOpt.Some;
+        campaign.raised += amount;
+        campaignStorage.insert(campaign.id, campaign);
+        return Ok(campaign);
     }),
 
 

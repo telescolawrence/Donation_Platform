@@ -9,6 +9,7 @@ import CreateDonorProfile from '../components/donor/CreateDonorProfile';
 import { addDonorToCampaign, createDonor, getCampaigns as getCampaignList, getDonorById, makeDonation } from '../utils/marketplace';
 import { toast } from 'react-toastify';
 import MakeDonation from '../components/donor/MakeDonation';
+import Loader from '../components/utils/Loader';
 
 
 
@@ -65,6 +66,7 @@ const Donor = () => {
 
   const addDonor = async (donor) => {
     try {
+      setLoading(true);
       const donorStr = donor.donationAmount;
       donor.donationAmount = parseInt(donorStr,10);
       await createDonor(donor).then( async (resp) => {
@@ -75,6 +77,8 @@ const Donor = () => {
     } catch (error) {
       console.log({ error });
       toast(<NotificationError text="Failed to create a donor. Create Donor Profile to Donate" />);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -88,6 +92,8 @@ const Donor = () => {
     <>
     <Notification />
     {isAuthenticated ? (
+      <>
+      {!loading ? (
 
         <Container fluid="md">
         <Nav className='justify-content-end pt-3 pb-5'>
@@ -130,7 +136,7 @@ const Donor = () => {
             </thead>
             <tbody>
                 {campaigns.map((campaign, index) => (
-                    <tr key={index}>
+                  <tr key={index}>
                         <td>{index}</td>
                         <td>{campaign.title}</td>
                         <td>{campaign.description}</td>
@@ -149,8 +155,11 @@ const Donor = () => {
         </Table>
 
         
+        
        
         </Container>
+        ) : ( <Loader /> )}
+        </>
 
     ) : (
     <Cover name="" login={login}  />

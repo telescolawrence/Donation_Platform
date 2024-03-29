@@ -10,23 +10,13 @@ import { changeStatus, createDonation, getDonationById } from "../../utils/marke
 
 const Campaign = ({campaign}) => {
     const { id, title, description, goal, raised,donor, status, creator } = campaign;
+
+    const displayRaised = raised / BigInt(10 ** 8);
     const [donation, setDonation] = useState({});
   // console.log("donation Amount", donation)
 
 
-      const addDonation = async (donation) => {
-        try {
-          const priceStr = donation.amount;
-          donation.amount = parseInt(priceStr, 10);
-          createDonation(id,donation).then((resp) => {
-           setDonation(getDonationById(resp.Ok.id));
-          });
-          toast(<NotificationSuccess text="donation added successfully." />);
-        } catch (error) {
-          console.log({ error });
-          toast(<NotificationError text="Failed to create a donation." />);
-        }
-      };
+
 
       // check for donation status update
       const performCampaignCheck = async () => {
@@ -52,7 +42,7 @@ const Campaign = ({campaign}) => {
           <Stack direction="horizontal" gap={2}>
             <span className="font-monospace text-secondary">{creator.toString()}</span>
             <Badge bg="secondary" className="ms-auto">
-              {raised.toString()} Raised
+              {displayRaised.toString()} Raised
             </Badge>
           </Stack>
         </Card.Header>
@@ -63,33 +53,13 @@ const Campaign = ({campaign}) => {
             <span>{goal.toString()} Goal</span>
           </Card.Text>
           <Card.Text className="text-secondary">
-            <span>Donors</span>
+            <span>Donors:  </span>
                 {donor ? donor.map((_donor, index) => (
-                    <span key={index}>{_donor}</span>
+                    <span key={index}>{_donor}, </span>
                 )): "N/A"}
             </Card.Text>
-          <Card.Text className="text-secondary">
-            <span>{creator.toString()}</span>
-          </Card.Text>
-          {/* Display donation.id donation.amount donation.donor array */}
 
-          <Card.Text className="text-secondary">
-            <span>{donation.id}</span>
-            </Card.Text>
-            <Card.Text className="text-secondary">
-            <span>{donation.amount ? donation.amount.toString() : "Set donation amount"}</span>
-            </Card.Text>
-            { status !== "COMPLETED" ?
-              <CreateDonation save={addDonation} /> :
-              <Button
-                variant="dark"
-                disabled
-                style={{marginRight: "10px"}}
-              >
-                  Update Donation Record
-              </Button>
-            
-          }
+          
         </Card.Body>
       </Card>
     </Col>
